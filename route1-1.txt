@@ -1,0 +1,16 @@
+call all
+go-here-to-vertex 1
+direct workers 10 to treasure 0 
+direct workers 10 to treasure 1
+go-here 0
+worker-wait 50
+call all
+go-here 2
+d w 20 to t 2
+d w 20 to t 3
+go-here 0
+treasure-wait 3
+call all
+g 3
+d w 20 to t 4
+d w 23 to t 5
