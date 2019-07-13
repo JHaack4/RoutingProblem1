@@ -1,26 +1,12 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.util.ArrayList;
 
 public class FixedRoute extends Route {
 
-	FixedRoute(String filename) {
+	FixedRoute(ArrayList<String> route) {
 		super();
-		
-		BufferedReader f;
-		try {
-			f = new BufferedReader(new FileReader(filename));
-			while(true) {
-				String s = f.readLine();
-				if (s == null) break;
-				if (s.charAt(0) == ';') continue; //;comment
-				if (s.trim().equals("")) continue;
-				R.add(s.trim());
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		
+		for (String r: route) R.add(r);
 	}
 	  
 	@Override

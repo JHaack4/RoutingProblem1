@@ -1,18 +1,9 @@
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.PriorityQueue;
-import java.util.Scanner;
-import java.util.stream.Collectors;
 
 public class Problem {
 
 	ArrayList<Vertex> V = new ArrayList<Vertex>();
-	HashMap<Integer, Vertex> idV = new HashMap<Integer, Vertex>();
 	ArrayList<Edge> E = new ArrayList<Edge>();
 	ArrayList<Captain> C = new ArrayList<Captain>();
 	ArrayList<Worker> W = new ArrayList<Worker>();
@@ -20,164 +11,134 @@ public class Problem {
 	
 	Route route;
 	
-	final int numFramesPerSecond = 1;
+	int numFramesPerSecond = 1;
 	int numFrames = 0;
 	double curTime = 0;
 	int treasuresCollected = 0;
 	
-	boolean printInfo;
-	boolean printInfoNoisy = false;
-	boolean draw;
-	Draw drawer;
-	int millisWaitBetweenDraw = 200;
-	
-	Problem(String filename, Route route, boolean draw, boolean printInfo) {
-		this.draw = draw;
-		this.printInfo = printInfo;
+	Problem(ArrayList<String> problem, Route route) {
+
 		this.route = route;
-		if (draw) {
-			drawer = new Draw(this);
-			drawer.loadPanel();
-		}
-		try {
-			BufferedReader f = new BufferedReader(new FileReader(filename));
+		
+		for (int instr_idx = 0; instr_idx < problem.size(); instr_idx++) {
 			
-			while(true) {
-				String s = f.readLine();
-				if (s == null) break;
-				s = s.trim();
-				if (s.charAt(0) == ';') continue; // comment
-				if (s.indexOf(";") > -1) s = s.substring(0, s.indexOf(";"));
-				
-				String[] sc = s.split(" ");
-				
-				if (sc[0].charAt(0) == 'v') {
-					int id = Integer.parseInt(sc[1]);
-					Vertex v = new Vertex(this, id);
-					for (int i = 2; i < sc.length; i++) {
-						if (sc[i].equals("x")) {
-							++i;
-							v.x = Double.parseDouble(sc[i]);
-						}
-						else if (sc[i].equals("y")) {
-							++i;
-							v.y = Double.parseDouble(sc[i]);
-						}
+			String s = problem.get(instr_idx);
+			if (s.indexOf(";") > -1) s = s.substring(0, s.indexOf(";")).trim(); // ;comment
+			if (s.length() == 0) continue;
+			String[] sc = s.split(" ");
+			
+			String instr = "";
+			if (sc[0].equals("num-frames-per-second")) instr = "num-frames-per-second";
+			else if (sc[0].charAt(0) == 'v') instr = "vertex";
+			else if (sc[0].charAt(0) == 'e') instr = "edge";
+			else if (sc[0].charAt(0) == 't') instr = "treasure";
+			else if (sc[0].charAt(0) == 'c') instr = "captain";
+			else if (sc[0].charAt(0) == 'w') instr = "worker";
+			
+			
+			if (instr.equals("num-frames-per-second")) {
+				numFramesPerSecond = Integer.parseInt(sc[1]);
+			}
+			else if (instr.equals("vertex")) {
+				int id = Integer.parseInt(sc[1]);
+				Vertex v = new Vertex(this, id);
+				for (int i = 2; i < sc.length; i++) {
+					if (sc[i].equals("x")) {
+						++i;
+						v.x = Double.parseDouble(sc[i]);
 					}
-					V.add(v);
-					idV.put(id, v);
-				}
-				if (sc[0].charAt(0) == 'e') {
-					int v = Integer.parseInt(sc[1]);
-					int w = Integer.parseInt(sc[2]);
-					Vertex vv = idV.get(v);
-					Vertex ww = idV.get(w);
-					double distance = -1;
-					for (int i = 3; i < sc.length; i++) {
-						if (sc[i].equals("d")) {
-							++i;
-							distance = Double.parseDouble(sc[i]);
-						}
+					else if (sc[i].equals("y")) {
+						++i;
+						v.y = Double.parseDouble(sc[i]);
 					}
-					if (distance == -1) { // distance not provided by file
-						distance = Math.sqrt(vv.x*ww.x + vv.y*ww.y);
+				}
+				V.add(v);
+			}
+			else if (instr.equals("edge")) {
+				Vertex v = V.get(Integer.parseInt(sc[1]));
+				Vertex w = V.get(Integer.parseInt(sc[2]));
+				double distance = -1;
+				for (int i = 3; i < sc.length; i++) {
+					if (sc[i].charAt(0) == 'd') {
+						++i;
+						distance = Double.parseDouble(sc[i]);
 					}
-					Edge e = new Edge(this, vv, ww, distance);
-					e.edgeId = E.size();
-					E.add(e);
-					vv.adj.add(e);
-					ww.adj.add(e);
 				}
-				if (sc[0].charAt(0) == 'k' || sc[0].equals("task")) {
-					
+				if (distance == -1) { // distance not provided by file
+					distance = Math.sqrt(v.x*w.x + v.y*w.y);
 				}
-				if (sc[0].charAt(0) == 't') {
-					int v = Integer.parseInt(sc[1]);
-					Vertex vv = idV.get(v);
-					int weight = 1;
-					int maxCarriers = -1;
-					double distance = -1;
-					String name = "" + T.size();
-					for (int i = 2; i < sc.length; i++) {
-						if (sc[i].charAt(0) == 'w') {
-							++i;
-							weight = Integer.parseInt(sc[i]);
-						}
-						if (sc[i].charAt(0) == 'm') {
-							++i;
-							maxCarriers = Integer.parseInt(sc[i]);
-						}
-						if (sc[i].charAt(0) == 'n') {
-							++i;
-							name = sc[i];
-						}
+				Edge e = new Edge(this, E.size(), v, w, distance);
+				E.add(e);
+			}
+			else if (instr.equals("treasure")) {
+				Vertex v = V.get(Integer.parseInt(sc[1]));
+				int weight = 1;
+				int maxCarriers = -1;
+				String name = "" + T.size();
+				for (int i = 2; i < sc.length; i++) {
+					if (sc[i].charAt(0) == 'w') {
+						++i;
+						weight = Integer.parseInt(sc[i]);
 					}
-					if (maxCarriers == -1) { // distance not provided by file
-						maxCarriers = weight * 2;
+					if (sc[i].charAt(0) == 'm') {
+						++i;
+						maxCarriers = Integer.parseInt(sc[i]);
 					}
-					Treasure t = new Treasure(this, vv, weight, maxCarriers);
-					t.treasureId = T.size();
-					t.name = name;
-					T.add(t);
-					vv.treasuresHere.add(t);
+					if (sc[i].equals("name")) {
+						++i;
+						name = sc[i];
+					}
 				}
-				if (sc[0].charAt(0) == 'c') {
-					int v = Integer.parseInt(sc[1]);
-					Vertex vv = idV.get(v);
-					/*
-					for (int i = 2; i < sc.length; i++) {
-						if (sc[i].equals("w")) {
-							++i;
-							weight = Integer.parseInt(sc[i]);
-						}
-						if (sc[i].equals("m")) {
-							++i;
-							maxCarriers = Integer.parseInt(sc[i]);
-						}
-					}*/
-					Captain c = new Captain(this, vv);
-					vv.captainsHere.add(c);
-					c.captainId = C.size();
-					C.add(c);
+				if (maxCarriers == -1) { // maxCarriers not provided
+					maxCarriers = weight * 2;
 				}
-				
-				if (sc[0].charAt(0) == 'w') {
-					int num = Integer.parseInt(sc[1]);
-					/*
-					for (int i = 2; i < sc.length; i++) {
-						if (sc[i].equals("w")) {
-							++i;
-							weight = Integer.parseInt(sc[i]);
-						}
-						if (sc[i].equals("m")) {
-							++i;
-							maxCarriers = Integer.parseInt(sc[i]);
-						}
-					}*/
-					for (int i = 0; i < num; i++) {
-						Worker w = new Worker(this);
-						w.workerId = W.size();
-						W.add(w);
-						//Captain c = C.get(0);
-						//Vertex v = c.curVertex;
-						//v.workersHere.add(w);
-						//c.squad.add(w);
-						//w.curVertex = v;
-						//w.curCaptain = c;
-						w.curVertex = V.get(0);
-						V.get(0).workersHere.add(w);
+				Treasure t = new Treasure(this, T.size(), v, weight, maxCarriers);
+				t.name = name;
+				T.add(t);
+			}
+			else if (instr.equals("captain")) {
+				Vertex v = V.get(Integer.parseInt(sc[1]));
+				Captain c = new Captain(this, C.size(), v);
+				c.name = "" + C.size();
+				C.add(c);
+				for (int i = 2; i < sc.length; i++) {
+					if (sc[i].equals("speed")) {
+						++i;
+						c.captainSpeed = Double.parseDouble(sc[i]);
+					}
+					if (sc[i].equals("name")) {
+						++i;
+						c.name = sc[i];
 					}
 				}
 				
 			}
+			else if (instr.equals("worker")) {
+				int num = Integer.parseInt(sc[1]);
+				/*
+				for (int i = 2; i < sc.length; i++) {
+					if (sc[i].equals("w")) {
+						++i;
+						weight = Integer.parseInt(sc[i]);
+					}
+					if (sc[i].equals("m")) {
+						++i;
+						maxCarriers = Integer.parseInt(sc[i]);
+					}
+				}*/
+				for (int i = 0; i < num; i++) {
+					Worker w = new Worker(this, W.size(), V.get(0));
+					W.add(w);
+				}
+			}
+			else {
+				System.out.println("Misparsed problem statement " + s);
+			}
 			
-			f.close();
-			
-			
-			//System.out.println(shortestPath(V.get(0), V.get(1)).stream().map(Object::toString).collect(Collectors.joining(",")));
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
+		
+		Util.computeAllShortestPaths(this);
+
 		
 	}
 	
@@ -186,10 +147,9 @@ public class Problem {
 		
 		while(true) {
 
-			if (printInfo) {
-				System.out.println("frames=" + numFrames + " time=" + curTime
+			Draw.println("frames=" + numFrames + " time=" + curTime
 							+ " treasures_collected=" + treasuresCollected + "/" + T.size());
-			}
+			
 			
 			for (Worker w: W) {
 				w.update();
@@ -197,32 +157,28 @@ public class Problem {
 			for (Treasure t: T) {
 				t.update();
 			}
-			//route.computeNextRoutingDecision(this);
+
 			for (Captain c: C) {
 				c.update();
 			}
 			
-			if (treasuresCollected == T.size()) {
-				if (printInfo) {
-					System.out.println("Problem completed, time=" + curTime);
+			if (Draw.draw) {
+				Draw.drawer.updateGraphics(this);
+				try {
+					Thread.sleep(Draw.millisWaitBetweenDraw);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
+			}
+			
+			if (treasuresCollected == T.size()) {
+				Draw.println("Problem completed, time=" + curTime);
 				route.R.add(String.format("; Complete! time=%.2f", curTime));
 				return curTime;
 			}
 			if (curTime > maxTimeAllowed) {
-				if (printInfo) {
-					System.out.println("Time limit exceeded");
-				}
+				Draw.println("Time limit exceeded");
 				return maxTimeAllowed;
-			}
-			
-			if (draw) {
-				drawer.updateGraphics();
-				try {
-					Thread.sleep(millisWaitBetweenDraw);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
 			}
 			
 			numFrames += 1;
@@ -230,61 +186,5 @@ public class Problem {
 		}
 	}
 	
-	
-	
-	
-	
-	// paths are represented as lists of ints
-	// vn, ... e2, v2, e1, v1
-	ArrayList<Integer> shortestPath(Vertex startV, Vertex endV) {
-		// djikstra's algorithm
-		
-		PriorityQueue<Vertex> q = new PriorityQueue<Vertex>(new VertexComparator());
-		
-		for (int i = 0; i < V.size(); i++) {
-			V.get(i).distanceFromStartVertex = (i==startV.id ? 0 : INF);
-			V.get(i).prevEdge = null;
-			q.add(V.get(i));
-		}
-		
-		while(q.size() > 0) {
-			Vertex r = q.poll();
-			
-			if (r.id == endV.id) break;
-			
-			for (Edge e: r.adj) {
-				if (!e.traversableStartingHere(r)) continue;
-				Vertex o = e.otherVertex(r);
-				double alt = r.distanceFromStartVertex + e.distance;
-				if (alt < o.distanceFromStartVertex) {
-					o.prevEdge = e;
-					o.distanceFromStartVertex = alt;
-				}
-			}
-		}
-		
-		// reconstruct
-		ArrayList<Integer> path = new ArrayList<Integer>();
-		Vertex r = endV;
-		while(true) {
-			path.add(r.id);
-			if (r.id == startV.id) break;
-			path.add(r.prevEdge.edgeId);
-			r = r.prevEdge.otherVertex(r);
-		}
-		return path;
-		
-	}
-	
-	final double INF = Double.MAX_VALUE;
-	
-	class VertexComparator implements Comparator<Vertex>{ 
-        public int compare(Vertex s1, Vertex s2) { 
-            if (s1.distanceFromStartVertex < s2.distanceFromStartVertex) 
-                return -1; 
-            else if (s1.distanceFromStartVertex > s2.distanceFromStartVertex) 
-                return 1; 
-            return 0; 
-        } 
-    }
+
 }

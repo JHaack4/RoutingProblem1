@@ -4,153 +4,195 @@ import java.util.stream.Collectors;
 
 public class Captain {
 	
-	int captainId;
+	int id;
 	Problem p;
 	Vertex curVertex = null;
 	Edge curEdge = null;
 	double curLocationOnEdge = 0;
 	double captainSpeed = 1;
+	String name = "";
 	
 	ArrayList<Worker> squad = new ArrayList<Worker>();
 	ArrayList<Integer> path = new ArrayList<Integer>();
 	
 	boolean isMoving = false;
 	boolean isWaiting = false;
+	boolean isLagging = false;
 	double waitTimeRemaining = 0;
 	int waitCount = 0;
 	Treasure waitTreasure = null;
 	
-	Captain(Problem p, Vertex vv) {
+	Captain(Problem p, int id, Vertex initV) {
 		this.p = p;
-		curVertex = vv;
+		this.id = id;
+		curVertex = initV;
+		initV.captainsHere.add(this);
 	}
 	
 	void update() {
+		updateMovingWaiting();
+		
+		int numInstructionsRead = 0;
+		while (true) {
+			if (isMoving || isWaiting || isLagging) {
+				return; // not in a state to read an instruction 
+			}
+			
+			// Compute the next route instruction
+			if (p.route.i >= p.route.R.size()) {
+				p.route.computeNextRoutingDecision(p);
+			}
+			
+			if (p.route.i >= p.route.R.size()) {
+				return; // no more route instructions.
+			}
+			
+			String s = p.route.R.get(p.route.i).trim();
+			if (s.indexOf(";") > -1) s = s.substring(0, s.indexOf(";")).trim();
+			if (s.equals("")) {
+				p.route.i++;
+				continue; // no content in this instruction
+			}
+			
+			// time stamp this line
+			p.route.R.set(p.route.i, s + " ; " + String.format("time=%.2f", p.curTime));
+			p.route.i++;
+			
+			updateRouteInstruction(s);
+			
+			numInstructionsRead++;
+			if (numInstructionsRead > 10000) {
+				System.out.println("Error, probably an infinite instruction loop");
+				return;
+			}
+		}
+	}
+	
+	void updateMovingWaiting() {
 		if (isMoving) {
 			curLocationOnEdge += captainSpeed / p.numFramesPerSecond / curEdge.distance;
 			
-			// reached the next vertex
-			if (curLocationOnEdge > 1.00001) {
+			if (curLocationOnEdge > 1 - 1.0e-12) {
+				// reached the next vertex on the path
+				curVertex.captainsHere.remove(this);
 				curVertex = curEdge.otherVertex(curVertex);
 				
-				// reached the next vertex on the path
 				path.remove(path.size()-1);
 				path.remove(path.size()-1);
 				curLocationOnEdge = 0;
+				
 				if (path.size() < 2) {
 					// path is completed
 					path.clear();
 					isMoving = false;
-					if (p.printInfo)
-						System.out.println("-Captain " + captainId + " has reached vertex " + curVertex.id);
+					Draw.println("-Captain " + id + " has reached vertex " + curVertex.id);
 				} else {
 					curEdge = p.E.get(path.get(path.size() - 2));
-					return; // still moving
+					curVertex.captainsHere.add(this);
 				}
 			} 
-			else return; // still moving
 		}
-		if (isWaiting && waitTimeRemaining > 0) {
+		else if (isWaiting && waitTimeRemaining > 0) {
 			waitTimeRemaining -= 1.0 / p.numFramesPerSecond;
-			if (waitTimeRemaining < 0.00001) {
+			if (waitTimeRemaining < 1.0e-12) {
+				// waiting time has elapsed
 				waitTimeRemaining = 0;
 				isWaiting = false;
-				if (p.printInfo)
-					System.out.println("-Captain " + captainId + " has finished waiting");
+				Draw.println("-Captain " + id + " has finished waiting for time");
 			}
-			return; // still waiting
 		}
-		if (isWaiting && waitCount > 0) {
+		else if (isWaiting && waitCount > 0) {
 			if (squad.size() + curVertex.workersHere.size() >= waitCount) {
+				// worker count reached
+				Draw.println("-Captain " + id + " has finished waiting for workers " + waitCount);
 				waitCount = 0;
 				isWaiting = false;
-				if (p.printInfo)
-					System.out.println("-Captain " + captainId + " has finished waiting");
 			} 
-			else return; // still waiting
 		}
-		if (isWaiting && waitTreasure != null) {
+		else if (isWaiting && waitTreasure != null) {
 			if (curVertex.treasuresHere.contains(waitTreasure) || waitTreasure.isCollected) {
+				// treasure collected or arrived to vertex
+				Draw.println("-Captain " + id + " has finished waiting for treasure " + waitTreasure.name);
 				waitTreasure = null;
 				isWaiting = false;
-				if (p.printInfo)
-					System.out.println("-Captain " + captainId + " has finished waiting");
 			} 
-			else return;
 		}
-		
-		readRouteInstruction();
 	}
 	
-	void readRouteInstruction() {
+	void updateRouteInstruction(String s) {
 		
-		if (p.route.i >= p.route.R.size()) {
-			p.route.computeNextRoutingDecision(p);
-			if (p.route.i >= p.route.R.size()) {
-				return;
-			}
+		String[] sc = s.split(" ");
+		Draw.println("-Route instruction: " + s);
+		
+		String instr = "";
+		if (sc[0].charAt(0) == 'g') instr = "go-here";
+		else if (sc[0].charAt(0) == 'c') instr = "call";
+		else if (sc[0].charAt(0) == 'd') instr = "direct";
+		else if (sc[0].charAt(0) == 'w' && sc[0].length() >= 7) {
+			if (sc[0].substring(0, 7).equals("wait-ti")) instr = "wait-time";
+			if (sc[0].substring(0, 7).equals("wait-tr")) instr = "wait-treasure";
+			if (sc[0].substring(0, 7).equals("wait-wo")) instr = "wait-worker";
 		}
+		else if (sc[0].charAt(0) == 'w') instr = "wait-worker";
+		else if (sc[0].charAt(0) == 'm') instr = "wait-time";
+		else if (sc[0].charAt(0) == 't') instr = "wait-treasure";
 		
-		String sss = p.route.R.get(p.route.i).trim();
-		if (sss.charAt(0) == ';') {
-			readRouteInstruction(); // this line was a comment
-			return;
-		}
-		if (sss.indexOf(";") > -1) sss = sss.substring(0, sss.indexOf(";"));
-		String[] sc = sss.split(" ");
-		p.route.R.set(p.route.i, sss + " ; " + String.format("time=%.2f", p.curTime));
-		
-		p.route.i++;
-		System.out.println("-Instruction: " + Arrays.toString(sc));
-		
-		if (sc[0].charAt(0) == 'g') { // go-here
+		if (instr.equals("go-here")) {
 			Vertex v = p.V.get(Integer.parseInt(sc[1]));
-			path = p.shortestPath(curVertex, v);
+			path = Util.shortestPath(p, curVertex, v);
+			if (path == null) {
+				Draw.println("-Captain " + id + " failed go here from " + curVertex.id + " to " + v.id + ", no path.");
+			}
 			
 			curLocationOnEdge = 0;
-			if (path.size() < 2)  {
+			if (path.size() < 2 || path == null)  {
 				// already here
 			} else {
 				isMoving = true;
 				curEdge = p.E.get(path.get(path.size() - 2));
-				if (p.printInfo)
-					System.out.println("-Captain " + captainId + " is going-here to vertex " + v.id);
+				Draw.println("-Captain " + id + " is going-here to vertex " + v.id);
 			}
 		}
-		if ((sc[0].charAt(0) == 'w' && sc[1].equals("time")) || sc[0].charAt(0) == 'm' 
-				|| (sc[0].charAt(0) == 'w' && sc[1].charAt(0) == 'm')) { // wait time
-			if (sc[1].charAt(0) > '9') 
-				waitTimeRemaining = Double.parseDouble(sc[2]);
-			else waitTimeRemaining = Double.parseDouble(sc[1]);
-			isWaiting = true;
-			if (p.printInfo)
-				System.out.println("-Captain " + captainId + " is waiting for time " + waitTimeRemaining);
+		else if (instr.equals("wait-time")) {
+			waitTimeRemaining = Double.parseDouble(sc[1]);
+			if (waitTimeRemaining < 1.0e-12) {
+				// condition already satisfied
+			}
+			else {
+				isWaiting = true;
+				Draw.println("-Captain " + id + " is waiting for time " + waitTimeRemaining);
+			}
 		}
-		else if ((sc[0].charAt(0) == 'w' && sc[1].charAt(0) == 't')  
-				|| sc[0].charAt(0) == 't') { // wait for treasure
-			String wts = "";
-			if (sc[1].charAt(0) > '9') 
-				wts = sc[2].trim();
-			else wts = sc[1].trim();
-			for (Treasure t: p.T) {
-				if (t.name.equals(wts)) {
-					waitTreasure = t;
+		else if (instr.equals("wait-treasure")) { // wait for treasure
+			try { // first, assume we're given the treasure id
+				int id = Integer.parseInt(sc[1]);
+				waitTreasure = p.T.get(id);
+			} catch (Exception e) { // otherwise, assume the treasure name
+				for (Treasure t: p.T) {
+					if (t.name.equals(sc[1])) {
+						waitTreasure = t;
+					}
 				}
 			}
-			isWaiting = true;
-			if (p.printInfo)
-				System.out.println("-Captain " + captainId + " is waiting for treasure " + waitTreasure.name);
+			if (curVertex.treasuresHere.contains(waitTreasure) || waitTreasure.isCollected) {
+				// condition already satisfied
+			}
+			else {
+				isWaiting = true;
+				Draw.println("-Captain " + id + " is waiting for treasure " + waitTreasure.name);
+			}
 		}
-		else if (sc[0].charAt(0) == 'w') { // wait for count
-			if (sc[1].charAt(0) > '9') 
-				waitCount = Integer.parseInt(sc[2]);
-			else waitCount = Integer.parseInt(sc[1]);
-			isWaiting = true;
-			if (p.printInfo)
-				System.out.println("-Captain " + captainId + " is waiting for count " + waitCount);
+		else if (instr.equals("wait-worker")) { // wait for count
+			waitCount = Integer.parseInt(sc[1]);
+			if (squad.size() + curVertex.workersHere.size() >= waitCount) {
+				// condition already satisfied
+			} else {
+				isWaiting = true;
+				Draw.println("-Captain " + id + " is waiting for count " + waitCount);
+			}
 		}
-		if (sc[0].charAt(0) == 'c') { // call
-			if (sc[1].charAt(0) == 'a') {
+		else if (instr.equals("call")) { // call
+			if (sc[1].charAt(0) == 'a') { // all
 				// call all workers at this vertex
 				for (Worker w: curVertex.workersHere) {
 					squad.add(w);
@@ -159,11 +201,16 @@ public class Captain {
 					w.curLocationOnEdge = 0;
 				}
 				curVertex.workersHere.clear();
-				System.out.println("-Captain " + captainId + " called all at vertex " + curVertex.id + ", squad is now " + squad.size());
+				Draw.println("-Captain " + id + " called all at vertex " + curVertex.id + ", squad is now " + squad.size());
 			}
 		}
-		if (sc[0].charAt(0) == 'd') { // direct workers onto a treasure
+		else if (instr.equals("direct")) { // direct workers onto a treasure
 			Treasure t = p.T.get(Integer.parseInt(sc[sc.length-1]));
+			if (t.curVertex.id != curVertex.id) {
+				System.out.println("Error: trying to load a treasure from wrong vertex");
+				System.exit(0);
+				return;
+			}
 			ArrayList<Worker> workersToAdd = new ArrayList<Worker>();
 			
 			if (sc[1].charAt(0) == 'w') { // send fixed number of workers from squad
@@ -177,12 +224,12 @@ public class Captain {
 				
 			}
 			
-			if (p.printInfo) {
-				System.out.print("-Captain " + captainId + " sends " + workersToAdd.size() 
-				+ " workers to treasure " + t.treasureId 
+			if (Draw.draw) {
+				Draw.print("-Captain " + id + " sends " + workersToAdd.size() 
+				+ " workers to treasure " + t.id 
 				+ " {workers" );
-				for (Worker w: workersToAdd) System.out.print(" " + w.workerId); 
-				System.out.println("}");
+				for (Worker w: workersToAdd) Draw.print(" " + w.id); 
+				Draw.println("}");
 			}
 			
 			for (int i = 0; i < workersToAdd.size(); i++) {
@@ -191,8 +238,9 @@ public class Captain {
 			t.addCarriers(workersToAdd);
 			
 		}
-		
-		update(); // do another thing, start moving, etc
+		else {
+			System.out.println("Error: cannot parse routing instruction: " + s);
+		}
 		
 	}
 	

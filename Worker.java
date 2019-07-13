@@ -2,7 +2,7 @@ import java.util.ArrayList;
 
 public class Worker {
 	
-	int workerId;
+	int id;
 	Problem p;
 	Captain curCaptain = null;
 	Treasure curTreasure = null;
@@ -17,10 +17,14 @@ public class Worker {
 	
 	ArrayList<Integer> path = new ArrayList<Integer>();
 	
-	Worker(Problem p) {
+	Worker(Problem p, int id, Vertex initV) {
 		this.p = p;
+		this.id = id;
 		this.type = 0;
 		this.maturity = 2;
+		
+		curVertex = initV;
+		initV.workersHere.add(this);
 	}
 
 	void update() {

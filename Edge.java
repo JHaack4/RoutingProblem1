@@ -2,7 +2,7 @@ import java.util.ArrayList;
 
 public class Edge {
 	
-	int edgeId;
+	int id;
 	Problem p;
 	Vertex v = null;
 	Vertex w = null;
@@ -14,11 +14,14 @@ public class Edge {
 	ArrayList<Worker> workersHere = new ArrayList<Worker>();
 	ArrayList<Treasure> treasuresHere = new ArrayList<Treasure>();
 	
-	Edge(Problem p, Vertex v, Vertex w, double d) {
+	Edge(Problem p, int id, Vertex v, Vertex w, double d) {
 		this.p = p;
+		this.id = id;
 		this.v = v;
 		this.w = w;
 		distance = d;
+		v.adj.add(this);
+		w.adj.add(this);
 	}
 	
 	

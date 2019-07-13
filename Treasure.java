@@ -3,7 +3,7 @@ import java.util.stream.Collectors;
 
 public class Treasure {
 	
-	int treasureId;
+	int id;
 	Problem p;
 	String name;
 	Vertex curVertex = null;
@@ -19,18 +19,19 @@ public class Treasure {
 	ArrayList<Worker> carriers = new ArrayList<Worker>();
 	ArrayList<Integer> path = new ArrayList<Integer>();
 	
-	Treasure(Problem p, Vertex vv, int weight, int maxCarriers) {
+	Treasure(Problem p, int id, Vertex initV, int weight, int maxCarriers) {
 		this.p = p;
-		curVertex = vv;
+		this.id = id;
+		curVertex = initV;
 		this.weight = weight;
 		this.maxCarriers = maxCarriers;
+		initV.treasuresHere.add(this);
 	}
 	
 	void updatePath() {
-		path = p.shortestPath(curVertex, p.V.get(0));
-		if (p.printInfo) {
-			System.out.print("-Treasure " + treasureId + " taking {path " + path.stream().map(Object::toString).collect(Collectors.joining("<")) + "}\n");
-		}
+		path = Util.shortestPath(p,curVertex, p.V.get(0));
+		Draw.print("-Treasure " + id + " taking {path " + path.stream().map(Object::toString).collect(Collectors.joining("<")) + "}\n");
+		
 		curLocationOnEdge = 0;
 		if (path.size() < 2) return;
 		curEdge = p.E.get(path.get(path.size() - 2));
@@ -42,13 +43,12 @@ public class Treasure {
 				carriers.add(w);
 			}
 			else {
-				System.out.println("error, too many carriers");
+				System.out.println("Error, too many carriers");
 			}
 		}
 		
-		if (p.printInfo) {
-			System.out.println("-Treasure " + treasureId + " adds " + cc.size() + " carriers");
-		}
+		Draw.println("-Treasure " + id + " adds " + cc.size() + " carriers");
+		
 		
 		if (carriers.size() >= weight) {
 			isMoving = true;
@@ -71,14 +71,13 @@ public class Treasure {
 		curLocationOnEdge += speed / p.numFramesPerSecond / curEdge.distance;
 		
 		// reached the next vertex
-		if (curLocationOnEdge > 0.99999) {
+		if (curLocationOnEdge > 1 - 1.0e-12) {
+			curVertex.treasuresHere.remove(this);
 			curVertex = curEdge.otherVertex(curVertex);
 			
 			if (curVertex.id == 0) {
-				// reached onion
-				if (p.printInfo) {
-					System.out.println("-Treasure " + name + " has reached the onion");
-				}
+				Draw.println("-Treasure " + name + " has been collected");
+				
 				isCollected = true;
 				p.treasuresCollected ++;
 				curLocationOnEdge = 0;
@@ -95,6 +94,7 @@ public class Treasure {
 			}
 			
 			// reached the next vertex on the path
+			curVertex.treasuresHere.add(this);
 			path.remove(path.size()-1);
 			path.remove(path.size()-1);
 			curLocationOnEdge = 0;

@@ -16,6 +16,7 @@ public class Vertex {
 	// helpers for shortest path
 	double distanceFromStartVertex;
 	Edge prevEdge;
+	boolean visited;
 	
 	Vertex(Problem p, int id) {
 		this.p = p;

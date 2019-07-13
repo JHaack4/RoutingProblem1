@@ -1,0 +1,62 @@
+call all
+go-here-to-vertex 8
+direct workers 15 to treasure 35
+direct workers 15 to treasure 34
+direct workers 1 to treasure 30
+direct workers 1 to treasure 27
+direct workers 1 to treasure 28
+direct workers 1 to treasure 31
+direct workers 1 to treasure 29
+direct workers 1 to treasure 26
+direct workers 10 to treasure 23
+go-here-to-vertex 1
+direct workers 1 to treasure 0
+direct workers 3 to treasure 11
+go-here-to-vertex 0
+wait-workers 50
+call all
+;
+go-here-to-vertex 10
+direct workers 15 to treasure 33
+direct workers 1 to treasure 4
+direct workers 15 to treasure 32
+direct workers 1 to treasure 5
+go-here-to-vertex 11
+direct workers 10 to treasure 25
+direct workers 3 to treasure 17
+direct workers 1 to treasure 6
+direct workers 1 to treasure 7
+go-here-to-vertex 7
+direct workers 3 to treasure 15
+go-here-to-vertex 0
+wait-workers 23
+call all 
+;
+go-here-to-vertex 9
+direct workers 5 to treasure 21
+direct workers 3 to treasure 18
+go-here-to-vertex 13
+direct workers 10 to treasure 24
+direct workers 1 to treasure 8
+direct workers 1 to treasure 9
+direct workers 3 to treasure 16
+g 0
+w 35
+c all
+;
+go-here-to-vertex 3
+direct workers 3 to treasure 12
+direct workers 5 to treasure 19
+direct workers 1 to treasure 3
+go-here-to-vertex 5
+direct workers 3 to treasure 14
+direct workers 3 to treasure 13
+direct workers 1 to treasure 2
+go-here-to-vertex 4
+direct workers 10 to treasure 22
+direct workers 5 to treasure 20
+go-here-to-vertex 2
+direct workers 1 to treasure 1
+direct workers 3 to treasure 10
+wait-time 10000
+; Complete! time=91.00

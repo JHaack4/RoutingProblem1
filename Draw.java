@@ -13,67 +13,24 @@ import javax.swing.JPanel;
 
 public class Draw implements KeyListener, MouseListener {
 	
+	static Draw drawer = new Draw();
+	static boolean draw = false;
+	static boolean printInfo = false;
+	static int millisWaitBetweenDraw = 300;
+	
 	JFrame frame;
 	MyPanel panel;
 	JLabel label;
 	Graphics g;
-	final Problem p;
+	Problem p = null;
 	
-	Draw(Problem p) {
+	Font ft = new Font("Serif", Font.PLAIN, 15);
+	Font ft2 = new Font("Serif", Font.BOLD, 20);
+	
+	void updateGraphics(Problem p) {
+		if (!draw) return;
 		this.p = p;
-	}
-	
-	void loadPanel() {
-		//EventQueue.invokeLater(new Runnable() {
-		//public void run() {
-			try {
-				panel = new MyPanel();
-				panel.setBounds(0, 0, 1000, 1000);
-				panel.setBackground(Color.gray);
-				panel.setLayout(null);
-				panel.setFocusable(true);
-				panel.addKeyListener(this);
-				panel.addMouseListener(this);
-				
-				//g = panel.getGraphics();
-		
-				frame = new JFrame();				
-				frame.setBounds(10, 10, 1000, 1000);
-				frame.setContentPane(panel);
-				frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-				//frame.getContentPane().setLayout(null);
-				frame.setVisible(true);
-	
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.out.println("Error: Loading frame error");
-			}
-			
-		//}
-	//});	
-	}
-	
-	Font ft = new Font("Serif", Font.PLAIN,15);
-	
-	void updateGraphics() {
-		
-		panel.removeAll();
-		//g.clearRect(0, 0, 1000, 1000);
-		
-		//g.fillOval(370, 350, 100, 100);
-		
-				
-		/*label = new JLabel("<html>" + p.state().replaceAll("\n", "<br>") + "</html>");
-		label.setFont(ft);
-		label.setForeground(new Color(230,230,230));
-		label.setBounds(10, 10, 1000, 1000);
-		frame.getContentPane().add(label);*/
-				
-		
-		//JLabel jLabel3 = new JLabel(new ImageIcon(imgs[cursor]));
-		//jLabel3.setBounds(N*W+10, 10, W, W);
-		//frame.getContentPane().add(jLabel3);
-		
+		panel.removeAll();		
 		panel.repaint();
 	}
 	
@@ -84,38 +41,43 @@ public class Draw implements KeyListener, MouseListener {
 		public void paintComponent(Graphics g) {
 		 
 			 g.clearRect(0, 0, 1000, 1000);
+			 if (p == null) return;
 			 
-			 int vSize = 50;
-			 int tSize = 0;
+			 int vSize = 60;
+			 int tSize = 1; // multiplier on treasure size
 			 int cSize = 16;
 			 int wSize = 4;
-			 g.setFont(ft);
+			 g.setFont(ft2);
+			 g.setColor(new Color(120,120,120));
+			 ds(g,"time: " + String.format("%.2f", p.curTime),10,30);
+			 
+			 for (int q = 0; q < p.E.size(); q++) {
+				 Edge e = p.E.get(q);
+				 g.setColor(new Color(200,200,200));
+				 g.drawLine((int)e.v.x, (int)e.v.y, (int)e.w.x, (int)e.w.y);
+				 g.setColor(new Color(120,120,120));
+				 ds(g,(int)e.distance+"",(e.v.x+e.w.x)/2,(e.v.y+e.w.y)/2);
+			 }
 			 
 			 for (int q = 0; q < p.V.size(); q++) {
 				 Vertex v = p.V.get(q);
-				 g.setColor(new Color(0,0,0));
+				 g.setColor(new Color(200,200,200));
 				 g.fillOval((int)v.x-vSize/2, (int)v.y-vSize/2, vSize, vSize);
-				 g.setColor(new Color(150,150,150));
-				 ds(g,"v"+v.id,v.x,v.y);
+				 g.setColor(new Color(170,170,170));
+				 ds(g,"v"+v.id,v.x + vSize/4,v.y + vSize/2);
 				 
 				 int sz = v.workersHere.size();
 				 for (int qq = 0; qq < v.workersHere.size(); qq++) {
 					 Worker wk = v.workersHere.get(qq);
-					 double xx = v.x + (vSize/2) * Math.cos(2*3.14159*qq/sz) + (vSize/3) * Math.random();
-					 double yy = v.y + (vSize/2) * Math.sin(2*3.14159*qq/sz) + (vSize/3) * Math.random();
+					 double xx = v.x + (vSize/4) * Math.cos(2*3.14159*qq/sz) + (vSize/6) * Math.random();
+					 double yy = v.y + (vSize/4) * Math.sin(2*3.14159*qq/sz) + (vSize/6) * Math.random();
 					 g.setColor(new Color(255,0,0)); // color depend on worker...
 					 g.drawOval((int)xx-wSize/2, (int)yy-wSize/2, wSize, wSize);
 					 //g.setColor(new Color(230,130,0));
 				 }
 			 }
 			 
-			 for (int q = 0; q < p.E.size(); q++) {
-				 Edge e = p.E.get(q);
-				 g.setColor(new Color(0,0,0));
-				 g.drawLine((int)e.v.x, (int)e.v.y, (int)e.w.x, (int)e.w.y);
-				 g.setColor(new Color(50,50,50));
-				 ds(g,(int)e.distance+"",(e.v.x+e.w.x)/2,(e.v.y+e.w.y)/2);
-			 }
+			 
 
 			 for (int q = 0; q < p.T.size(); q++) {
 				 Treasure t = p.T.get(q);
@@ -123,12 +85,14 @@ public class Draw implements KeyListener, MouseListener {
 				 tSize = t.weight + 5;
 				 Vertex v = t.curVertex;
 				 Vertex w = (t.curEdge==null) ? v : t.curEdge.otherVertex(v);
-				 int hash = t.hashCode();
-				 double x = v.x + t.curLocationOnEdge * (w.x-v.x) + (vSize/3) * Math.cos(2*3.14159*hash/360);
-				 double y = v.y + t.curLocationOnEdge * (w.y-v.y) + (vSize/3) * Math.sin(2*3.14159*hash/360);;
+				 int hash = t.curVertex.treasuresHere.indexOf(t);
+				 int div = Math.max(1, t.curVertex.treasuresHere.size());
+				 double x = v.x + t.curLocationOnEdge * (w.x-v.x) + (vSize/3) * Math.cos(2*3.14159*hash/div);
+				 double y = v.y + t.curLocationOnEdge * (w.y-v.y) + (vSize/3) * Math.sin(2*3.14159*hash/div);;
 				 g.setColor(new Color(230,130,0));
 				 g.drawOval((int)x-tSize/2, (int)y-tSize/2, tSize, tSize);
-				 ds(g,"t"+t.name,x-10,y+5);
+				 g.setColor(new Color(100,50,0));
+				 ds(g,t.weight+"",x-5,y+5);
 				 
 				 int sz = t.carriers.size();
 				 for (int qq = 0; qq < sz; qq++) {
@@ -149,7 +113,7 @@ public class Draw implements KeyListener, MouseListener {
 				 double y = v.y + c.curLocationOnEdge * (w.y-v.y);
 				 g.setColor(new Color(30,30,200));
 				 g.fillOval((int)x-cSize/2, (int)y-cSize/2, cSize, cSize);
-				 //ds(g,"c",x-10,0y);
+				 ds(g,"squad size: " + c.squad.size(),10,50);
 				 
 				 int sz = c.squad.size();
 				 for (int qq = 0; qq < sz; qq++) {
@@ -162,14 +126,32 @@ public class Draw implements KeyListener, MouseListener {
 				 }
 			 }
 			 
-			 
-			  
-		     // draw oval
-		     //g.drawOval(20 + 10*(int)p.curTime, 30, 75, 100); 
-		 
-		     // draw circle
-		     //g.drawOval(150, 30, 100, 100); 
 		  }
+	}
+	
+	void loadPanel() {
+		if (!draw) return;
+		try {
+			panel = new MyPanel();
+			panel.setBounds(0, 0, 1000, 1000);
+			panel.setBackground(Color.gray);
+			panel.setLayout(null);
+			panel.setFocusable(true);
+			panel.addKeyListener(this);
+			panel.addMouseListener(this);
+
+			frame = new JFrame();				
+			frame.setBounds(10, 10, 1000, 1000);
+			frame.setContentPane(panel);
+			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			//frame.getContentPane().setLayout(null);
+			frame.setVisible(true);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.out.println("Error: Loading frame error");
+		}
+
 	}
 	
 	void ds(Graphics g, String s, double x, double y) {
@@ -223,6 +205,46 @@ public class Draw implements KeyListener, MouseListener {
 	public void keyTyped(KeyEvent arg0) {
 		// TDO Auto-generated method stub
 		
+	}
+	
+	static void print(int o) {
+		if (!printInfo) return;
+		System.out.print(o);
+	}
+	
+	static void println(int o) {
+		if (!printInfo) return;
+		System.out.println(o);
+	}
+	
+	static void print(double o) {
+		if (!printInfo) return;
+		System.out.print(o);
+	}
+	
+	static void println(double o) {
+		if (!printInfo) return;
+		System.out.println(o);
+	}
+	
+	static void print(String o) {
+		if (!printInfo) return;
+		System.out.print(o);
+	}
+	
+	static void println(String o) {
+		if (!printInfo) return;
+		System.out.println(o);
+	}
+	
+	static void print(Object o) {
+		if (!printInfo) return;
+		System.out.print(o);
+	}
+	
+	static void println(Object o) {
+		if (!printInfo) return;
+		System.out.println(o);
 	}
 
 }

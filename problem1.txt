@@ -1,4 +1,5 @@
 ; this is a comment
+num-frames-per-second 1
 vertex 0 x 400 y 600
 vertex 1 x 400 y 200
 vertex 2 x 680 y 880
